@@ -39,12 +39,7 @@ export default function App() {
     // 1. Vocabulary
     const cachedVocab = localStorage.getItem('vietlearn_vocab');
     if (cachedVocab) {
-      try {
-        setVocabItems(JSON.parse(cachedVocab));
-      } catch (e) {
-        console.error('Failed to parse cached vocab', e);
-        setVocabItems(DEFAULT_VOCAB_ITEMS);
-      }
+      setVocabItems(JSON.parse(cachedVocab));
     } else {
       setVocabItems(DEFAULT_VOCAB_ITEMS);
     }
@@ -52,12 +47,7 @@ export default function App() {
     // 2. Grammar Puzzles
     const cachedPuzzles = localStorage.getItem('vietlearn_puzzles');
     if (cachedPuzzles) {
-      try {
-        setPuzzles(JSON.parse(cachedPuzzles));
-      } catch (e) {
-        console.error('Failed to parse cached puzzles', e);
-        setPuzzles(DEFAULT_GRAMMAR_PUZZLES);
-      }
+      setPuzzles(JSON.parse(cachedPuzzles));
     } else {
       setPuzzles(DEFAULT_GRAMMAR_PUZZLES);
     }
@@ -65,11 +55,7 @@ export default function App() {
     // 3. Whiteboard Notebook Pages
     const cachedWhiteboard = localStorage.getItem('vietlearn_whiteboard');
     if (cachedWhiteboard) {
-      try {
-        setWhiteboardTabs(JSON.parse(cachedWhiteboard));
-      } catch (e) {
-        console.error('Failed to parse cached whiteboard', e);
-      }
+      setWhiteboardTabs(JSON.parse(cachedWhiteboard));
     } else {
       // Default sample notebook tabs
       setWhiteboardTabs([
@@ -126,11 +112,7 @@ export default function App() {
     // 4. Chat history
     const cachedChat = localStorage.getItem('vietlearn_chat');
     if (cachedChat) {
-      try {
-        setChatMessages(JSON.parse(cachedChat));
-      } catch (e) {
-        console.error('Failed to parse cached chat', e);
-      }
+      setChatMessages(JSON.parse(cachedChat));
     }
 
     // 5. Configs
@@ -174,9 +156,13 @@ export default function App() {
     localStorage.removeItem('vietlearn_chat');
   };
 
-  const handleSyncComplete = (newVocab: VocabItem[], newPuzzles: GrammarPuzzle[], newSheetUrl: string) => {
+  const handleSyncComplete = (newVocab: VocabItem[], newPuzzles: GrammarPuzzle[], newWhiteboard: WhiteboardTab[], newSheetUrl: string) => {
     setVocabItems(newVocab);
     setPuzzles(newPuzzles.length > 0 ? newPuzzles : DEFAULT_GRAMMAR_PUZZLES);
+    if (newWhiteboard && newWhiteboard.length > 0) {
+      setWhiteboardTabs(newWhiteboard);
+      localStorage.setItem('vietlearn_whiteboard', JSON.stringify(newWhiteboard));
+    }
     setSheetUrl(newSheetUrl);
     setSyncSource('sheet');
 

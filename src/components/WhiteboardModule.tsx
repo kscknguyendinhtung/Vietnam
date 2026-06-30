@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { WhiteboardTab, WhiteboardLine, WhiteboardWord } from '../types';
 import { 
   FileText, Plus, Trash2, Printer, Sparkles, Loader2, Edit2, Check, X, 
-  BookOpen, FolderPlus, ArrowDown, ChevronRight, HelpCircle 
+  BookOpen, FolderPlus, ArrowDown, ChevronRight, HelpCircle, FileSpreadsheet, Download, Copy, RefreshCw 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -19,6 +19,13 @@ interface WhiteboardModuleProps {
 export default function WhiteboardModule({ tabs, onUpdateTabs }: WhiteboardModuleProps) {
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [isPrinting, setIsPrinting] = useState(false);
+
+  // CSV Export state
+  const [isExportCsvOpen, setIsExportCsvOpen] = useState(false);
+  const [csvPreview, setCsvPreview] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState(localStorage.getItem('vietlearn_webhook_url') || '');
+  const [syncing, setSyncing] = useState(false);
 
   // Loading indicator map for debounced calls (key: rowId)
   const [loadingLines, setLoadingLines] = useState<Record<string, boolean>>({});
@@ -399,45 +406,242 @@ export default function WhiteboardModule({ tabs, onUpdateTabs }: WhiteboardModul
     setRenamingTabId(null);
   };
 
-  // Export to Print / PDF layout trigger
+  // Export to Print / PDF layout trigger (Uses popup to bypass AI Studio iframe restrictions)
   const handleExportPdf = () => {
-    setIsPrinting(true);
-    setTimeout(() => {
+    try {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Vietnamese Lesson Notebook - ${activeTab?.title || 'Bảng trắng'}</title>
+              <style>
+                body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; }
+                .header { border-bottom: 3px solid #0f172a; padding-bottom: 16px; margin-bottom: 32px; }
+                .title { font-size: 24px; font-weight: 900; margin: 0; color: #0f172a; }
+                .subtitle { font-size: 14px; color: #64748b; margin: 4px 0 0 0; }
+                .line-container { border-bottom: 1px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 24px; }
+                .line-num { font-size: 12px; font-weight: 800; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; }
+                .vi-text { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 12px; }
+                .section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; letter-spacing: 0.05em; }
+                .words-flex { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+                .word-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; text-align: center; }
+                .word-vi { font-size: 12px; font-weight: 700; color: #0f172a; border-bottom: 1px dashed #cbd5e1; padding-bottom: 2px; }
+                .word-en { font-size: 9px; font-weight: 700; color: #ea580c; text-transform: uppercase; margin-top: 4px; }
+                .en-text { font-size: 14px; font-weight: 700; color: #ea580c; margin-bottom: 12px; }
+                .grammar { font-size: 12px; color: #475569; background: #f8fafc; border-left: 3px solid #fbbf24; padding: 12px; border-radius: 4px; margin: 0; white-space: pre-wrap; font-family: inherit; }
+                @media print {
+                  body { padding: 20px; }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h1 class="title">Vietnamese Lesson Notebook</h1>
+                <p class="subtitle">Giáo án học tiếng Việt song ngữ: ${activeTab?.title || 'Bài giảng mới'}</p>
+              </div>
+              <div class="space-y-8">
+                ${activeTab?.lines.map((line, idx) => `
+                  <div class="line-container">
+                    <div class="line-num">#Dòng ${idx + 1}</div>
+                    <div style="margin-bottom: 12px;">
+                      <div class="section-title">Tiếng Việt</div>
+                      <div class="vi-text">${line.viText || '<em>Trống</em>'}</div>
+                    </div>
+                    ${line.words && line.words.length > 0 ? `
+                      <div style="margin-bottom: 12px;">
+                        <div class="section-title">Dịch từng từ (Word by Word)</div>
+                        <div class="words-flex">
+                          ${line.words.map(w => `
+                            <div class="word-card">
+                              <div class="word-vi">${w.vi}</div>
+                              <div class="word-en">${w.en}</div>
+                            </div>
+                          `).join('')}
+                        </div>
+                      </div>
+                    ` : ''}
+                    <div style="margin-bottom: 12px;">
+                      <div class="section-title">Dịch mượt (Smooth Translation)</div>
+                      <div class="en-text">"${line.fullEnText || '<em>Chưa dịch</em>'}"</div>
+                    </div>
+                    ${line.grammar ? `
+                      <div>
+                        <div class="section-title">Phân tích ngữ pháp (Grammar Notes)</div>
+                        <pre class="grammar">${line.grammar}</pre>
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+              <script>
+                window.onload = function() {
+                  window.print();
+                  setTimeout(function() { window.close(); }, 500);
+                };
+              </script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      } else {
+        // Fallback if popup is blocked
+        window.print();
+      }
+    } catch (e) {
+      console.error("Popup window print blocked, falling back to window.print()", e);
       window.print();
-      setIsPrinting(false);
-    }, 500);
+    }
+  };
+
+  const generateWhiteboardCSV = () => {
+    // Generate CSV headers
+    let csv = "Tiêu đề Tab,Câu Tiếng Việt,Dịch mượt,Từ vựng bóc tách,Ngữ pháp\n";
+    
+    tabs.forEach(tab => {
+      tab.lines.forEach(line => {
+        const title = `"${tab.title.replace(/"/g, '""')}"`;
+        const vi = `"${line.viText.replace(/"/g, '""')}"`;
+        const en = `"${line.fullEnText.replace(/"/g, '""')}"`;
+        
+        // Serialize words: vi:en, vi:en
+        const serializedWords = line.words.map(w => `${w.vi.replace(/[:,;]/g, ' ')}:${w.en.replace(/[:,;]/g, ' ')}`).join(', ');
+        const words = `"${serializedWords.replace(/"/g, '""')}"`;
+        
+        const grammar = line.grammar ? `"${line.grammar.replace(/"/g, '""')}"` : '""';
+        
+        csv += `${title},${vi},${en},${words},${grammar}\n`;
+      });
+    });
+    
+    return csv;
+  };
+
+  const handleOpenExportCsv = () => {
+    const csv = generateWhiteboardCSV();
+    setCsvPreview(csv);
+    setIsExportCsvOpen(true);
+  };
+
+  const handleDownloadCsv = () => {
+    const csv = generateWhiteboardCSV();
+    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `vietlearn_whiteboard_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCopyCsv = () => {
+    navigator.clipboard.writeText(csvPreview);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSyncToSheet = async () => {
+    if (!webhookUrl) {
+        alert("Vui lòng nhập Webhook URL của Google Apps Script");
+        return;
+    }
+    setSyncing(true);
+    try {
+        const response = await fetch('/api/sync-to-sheet', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ webhookUrl, data: tabs, type: 'whiteboard' })
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: "Sync failed" }));
+            throw new Error(errorData.error || "Sync failed");
+        }
+        localStorage.setItem('vietlearn_webhook_url', webhookUrl);
+        alert("Đồng bộ lên Sheet thành công!");
+    } catch (e: any) {
+        alert("Có lỗi xảy ra khi đồng bộ: " + e.message);
+    } finally {
+        setSyncing(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       {/* 1. Header Toolbar for whiteboard */}
-      <div className="bg-white rounded-2xl border-2 border-yellow-400/50 p-4 shadow-sm flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex items-center space-x-2 text-slate-700">
-          <FileText className="w-5 h-5 text-orange-500" />
-          <div>
-            <h3 className="text-xs font-extrabold text-slate-900">Notebook Bảng trắng dịch nghĩa song ngữ</h3>
-            <p className="text-[10px] text-slate-500 font-medium">Giáo viên soạn giáo án, dịch từ vựng song song theo thời gian thực.</p>
+      <div className="bg-white rounded-2xl border-2 border-yellow-400/50 p-4 shadow-sm space-y-4">
+        <div className="flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex items-center space-x-2 text-slate-700">
+            <FileText className="w-5 h-5 text-orange-500" />
+            <div>
+              <h3 className="text-xs font-extrabold text-slate-900">Notebook Bảng trắng dịch nghĩa song ngữ</h3>
+              <p className="text-[10px] text-slate-500 font-medium">Giáo viên soạn giáo án, dịch từ vựng song song theo thời gian thực.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3 flex-wrap gap-2">
+            {/* Add notebook tab */}
+            <button
+              onClick={handleAddTab}
+              className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+              <span>Thêm Tab bài giảng</span>
+            </button>
+
+            {/* Sync to Sheet */}
+            <button
+              onClick={handleSyncToSheet}
+              disabled={syncing}
+              className="flex items-center space-x-1.5 bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md shadow-sky-600/15 transition-all cursor-pointer disabled:opacity-50"
+            >
+              {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              <span>Đồng bộ lên Sheet</span>
+            </button>
+
+            {/* Delete All Whiteboards */}
+            <button
+              onClick={() => {
+                if (confirm("Bạn có chắc chắn muốn xóa tất cả bảng trắng không? Hành động này không thể hoàn tác.")) {
+                    onUpdateTabs([]);
+                    setActiveTabId('');
+                }
+              }}
+              className="flex items-center space-x-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa hết</span>
+            </button>
+
+            {/* Export to CSV */}
+            <button
+              onClick={handleOpenExportCsv}
+              className="flex items-center space-x-1.5 bg-green-600 hover:bg-green-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md shadow-green-600/15 transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Lưu / Xuất Sheet (CSV)</span>
+            </button>
+
+            {/* Export to PDF */}
+            <button
+              onClick={handleExportPdf}
+              className="flex items-center space-x-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-orange-500/15 transition-all cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Xuất PDF / In ấn</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          {/* Add notebook tab */}
-          <button
-            onClick={handleAddTab}
-            className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
-          >
-            <FolderPlus className="w-3.5 h-3.5" />
-            <span>Thêm Tab bài giảng</span>
-          </button>
-
-          {/* Export to PDF */}
-          <button
-            onClick={handleExportPdf}
-            className="flex items-center space-x-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-orange-500/15 transition-all cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Xuất PDF / In ấn</span>
-          </button>
+        {/* Webhook URL Input */}
+        <div className="flex items-center space-x-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+          <input
+            type="text"
+            placeholder="Dán Webhook URL của Google Apps Script tại đây..."
+            value={webhookUrl}
+            onChange={(e) => setWebhookUrl(e.target.value)}
+            className="flex-1 bg-transparent px-2 py-1 text-xs outline-none font-mono"
+          />
         </div>
       </div>
 
@@ -736,9 +940,105 @@ export default function WhiteboardModule({ tabs, onUpdateTabs }: WhiteboardModul
           <li>Nhập câu bất kỳ bằng tiếng Việt, sau đó nhấn biểu tượng <Sparkles className="w-3.5 h-3.5 inline text-orange-500" /> hoặc phím <strong>Enter</strong> để AI dịch.</li>
           <li>Hệ thống tự động liên kết nghĩa trọn vẹn cả câu (phía trên) và bóc tách từng từ/cụm từ word-by-word (phía dưới).</li>
           <li>Bạn có thể <strong>click trực tiếp vào nhãn tiếng Anh của từ vựng</strong> bên dưới để chỉnh sửa hoặc điều chỉnh nghĩa dịch theo ý muốn!</li>
-          <li>Click nút <strong>Xuất PDF</strong> để in bài giảng ra giấy hoặc lưu thành tài liệu học tập PDF hoàn chỉnh.</li>
+          <li>Lưu lại tiến độ bằng cách click nút <strong>Lưu / Xuất Sheet (CSV)</strong> để lưu thành 1 sheet trong file Google Sheets của bạn.</li>
+          <li>Click nút <strong>Xuất PDF</strong> để in bài giảng ra giấy hoặc lưu thành tài liệu học tập PDF hoàn chỉnh (đã được tối ưu hóa hiển thị trong AI Studio).</li>
         </ul>
       </div>
+
+      {/* 5. CSV Export Modal Popup */}
+      <AnimatePresence>
+        {isExportCsvOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl border-4 border-yellow-400 max-w-2xl w-full p-6 md:p-8 space-y-6 shadow-2xl relative"
+            >
+              {/* Close button */}
+              <button
+                onClick={() => setIsExportCsvOpen(false)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center space-x-3 text-emerald-600">
+                <FileSpreadsheet className="w-8 h-8 shrink-0" />
+                <div>
+                  <h3 className="text-base md:text-lg font-black text-slate-900">Sao lưu & Đồng bộ Bảng trắng</h3>
+                  <p className="text-[11px] text-slate-500 font-bold">Lưu bài học bảng trắng của bạn vào Google Sheets để đồng bộ hóa bất kỳ lúc nào.</p>
+                </div>
+              </div>
+
+              {/* Instructions on how to save / reopen */}
+              <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3 text-xs text-slate-600 leading-normal">
+                <p className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[9px] font-black uppercase">Cách 1: Sao chép nhanh</span>
+                  Dán trực tiếp vào Google Sheets
+                </p>
+                <ol className="list-decimal pl-4 space-y-1.5 text-[11px] text-slate-500">
+                  <li>Click nút <strong>Sao chép CSV</strong> bên dưới.</li>
+                  <li>Mở file Google Sheets của bạn, tạo hoặc chọn một tab trống <strong>(ví dụ: Trang tính thứ 3)</strong>.</li>
+                  <li>Click chọn ô đầu tiên <strong>A1</strong>, rồi nhấn <strong>Ctrl+V</strong> (hoặc <strong>Cmd+V</strong> trên Mac). Google Sheets sẽ tự động phân chia dữ liệu thành các cột hoàn chỉnh!</li>
+                </ol>
+
+                <p className="font-bold text-slate-700 flex items-center gap-1.5 border-t border-slate-200/60 pt-3">
+                  <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[9px] font-black uppercase">Cách 2: Nhập tệp .csv</span>
+                  Tải xuống và nhập tệp tin vào Google Sheets
+                </p>
+                <p className="text-[11px] text-slate-500 leading-relaxed pl-1">
+                  Click nút <strong>Tải xuống tệp .CSV</strong>. Sau đó tại Google Sheets, vào <strong>Tệp (File) {"->"} Nhập (Import) {"->"} Tải lên (Upload)</strong> và chọn tệp tin vừa tải về.
+                </p>
+              </div>
+
+              {/* CSV Textarea Preview */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Xem trước nội dung CSV:</span>
+                  <span className="text-[10px] text-slate-400 font-semibold">{tabs.reduce((acc, tab) => acc + tab.lines.length, 0)} dòng dữ liệu chuẩn hóa</span>
+                </div>
+                <textarea
+                  readOnly
+                  value={csvPreview}
+                  rows={4}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 font-mono text-[10px] text-slate-600 outline-none leading-relaxed select-all"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-wrap gap-3 items-center justify-end">
+                <button
+                  type="button"
+                  onClick={handleCopyCsv}
+                  className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span className="text-emerald-700 font-black">Đã sao chép!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Sao chép CSV</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadCsv}
+                  className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-emerald-500/15 transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Tải xuống tệp .CSV</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* SPECIAL HIDDEN VIEW SPECIFICALLY FOR PRINT MEDIA STYLING */}
       <div className="hidden print:block absolute inset-0 bg-white z-50 p-10 font-sans" id="print-view-layout">

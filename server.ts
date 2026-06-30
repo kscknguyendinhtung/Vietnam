@@ -296,23 +296,7 @@ Sentence: "${text.trim()}"`;
       throw new Error("Empty response from AI model.");
     }
 
-    let parsedData;
-    try {
-      parsedData = JSON.parse(resultText.trim());
-    } catch (e) {
-      throw new Error("Failed to parse AI response as JSON.");
-    }
-
-    // Schema Validation
-    if (
-      !parsedData ||
-      typeof parsedData.fullTranslation !== 'string' ||
-      !Array.isArray(parsedData.words) ||
-      !parsedData.words.every((w: any) => typeof w.vi === 'string' && typeof w.en === 'string')
-    ) {
-      throw new Error("Invalid schema for whiteboard response.");
-    }
-
+    const parsedData = JSON.parse(resultText.trim());
     res.json(parsedData);
   } catch (err: any) {
     console.warn("Failing back to 100% reliable local dictionary whiteboard translation:", err.message || err);
@@ -376,22 +360,7 @@ Always output valid JSON conforming to the schema.`;
       throw new Error("Empty response from Chat AI.");
     }
 
-    let parsedData;
-    try {
-      parsedData = JSON.parse(resultText.trim());
-    } catch (e) {
-      throw new Error("Failed to parse AI response as JSON.");
-    }
-
-    // Schema Validation
-    if (
-      !parsedData ||
-      typeof parsedData.content !== 'string' ||
-      typeof parsedData.translation !== 'string'
-    ) {
-      throw new Error("Invalid schema for chat response.");
-    }
-
+    const parsedData = JSON.parse(resultText.trim());
     res.json(parsedData);
   } catch (err: any) {
     console.warn("Failing back to 100% reliable local bilingual chatbot response:", err.message || err);
@@ -428,6 +397,36 @@ Break down the pronouns, verbs, particles, and sentence patterns used. Limit the
     console.warn("Failing back to 100% reliable local grammar explainer:", err.message || err);
     const localResult = localExplainGrammar(viSentence, enSentence);
     res.json(localResult);
+  }
+});
+
+// 4. API: Proxy sync to Google Sheet via Webhook
+app.post("/api/sync-to-sheet", async (req, res) => {
+  const { webhookUrl, data, type } = req.body;
+  if (!webhookUrl || !data || !type) {
+    return res.status(400).json({ error: "webhookUrl, data, and type are required" });
+  }
+
+  // Prevent using the spreadsheet URL by mistake
+  if (webhookUrl.includes("docs.google.com/spreadsheets/d/")) {
+    return res.status(400).json({ error: "Webhook URL không hợp lệ. Bạn đang dán đường dẫn Google Sheet thay vì Webhook URL của Google Apps Script." });
+  }
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data, type }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Webhook failed: ${response.statusText}`);
+    }
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Failed to sync to sheet:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

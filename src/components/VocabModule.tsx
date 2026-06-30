@@ -309,7 +309,7 @@ export default function VocabModule({ vocabItems, onUpdateVocab, onOpenSyncModal
     setIsFlipped(false);
   };
 
-  const currentItem = activeFlashcards[currentIndex];
+  const currentItem = activeFlashcards[currentIndex] || activeFlashcards[0] || filteredItems[0];
 
   return (
     <div className="space-y-6">
@@ -692,12 +692,12 @@ export default function VocabModule({ vocabItems, onUpdateVocab, onOpenSyncModal
                     }}
                     className={`p-1.5 rounded-full transition-all duration-200 cursor-pointer ${
                       currentItem.memorized
-                        ? 'text-yellow-300'
+                        ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                         : 'text-white/40 hover:text-white/80'
                     }`}
                     title={currentItem.memorized ? 'Đã thuộc từ này' : 'Đánh dấu đã thuộc'}
                   >
-                    <CheckCircle2 className="w-5 h-5 fill-current" />
+                    <CheckCircle2 className={`w-5 h-5 ${currentItem.memorized ? 'text-white fill-emerald-500' : 'fill-transparent'}`} />
                   </button>
                 </div>
 
@@ -762,7 +762,7 @@ export default function VocabModule({ vocabItems, onUpdateVocab, onOpenSyncModal
             </button>
 
             <span className="text-xs font-bold text-slate-500">
-              Từ {currentIndex + 1} / {activeFlashcards.length}
+              Từ {activeFlashcards.length > 0 ? currentIndex + 1 : 1} / {activeFlashcards.length || 1}
             </span>
 
             <button
