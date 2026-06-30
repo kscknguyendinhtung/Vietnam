@@ -79,6 +79,11 @@ export async function fetchVocabFromSheet(spreadsheetId: string, sheetNameOrId: 
   }
 
   const csvText = await response.text();
+
+  if (csvText.trim().startsWith('<!DOCTYPE html>') || csvText.trim().toLowerCase().startsWith('<html')) {
+    throw new Error("Không thể tải dữ liệu: Google Sheet không ở chế độ công khai hoặc trang tính không tồn tại.");
+  }
+
   const rows = parseCSV(csvText);
 
   if (rows.length < 2) {
@@ -123,6 +128,11 @@ export async function fetchGrammarFromSheet(spreadsheetId: string, sheetNameOrId
   }
 
   const csvText = await response.text();
+
+  if (csvText.trim().startsWith('<!DOCTYPE html>') || csvText.trim().toLowerCase().startsWith('<html')) {
+    throw new Error("Không thể tải dữ liệu: Google Sheet không ở chế độ công khai hoặc trang tính không tồn tại.");
+  }
+
   const rows = parseCSV(csvText);
 
   if (rows.length < 2) {
