@@ -402,16 +402,16 @@ Break down the pronouns, verbs, particles, and sentence patterns used. Limit the
 
 // 4. API: Proxy sync to Google Sheet via Webhook
 app.post("/api/sync-to-sheet", async (req, res) => {
-  const { webhookUrl, data } = req.body;
-  if (!webhookUrl || !data) {
-    return res.status(400).json({ error: "webhookUrl and data are required" });
+  const { webhookUrl, data, type } = req.body;
+  if (!webhookUrl || !data || !type) {
+    return res.status(400).json({ error: "webhookUrl, data, and type are required" });
   }
 
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ data, type }),
     });
 
     if (!response.ok) {

@@ -206,39 +206,36 @@ export default function SyncModal({ isOpen, onClose, onSyncComplete, currentShee
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 1 (Từ vựng)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 1 (Bảng trắng - Whiteboard)</label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Sheet1 hoặc 0"
-                  value={vocabSheetName}
-                  onChange={(e) => setVocabSheetName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">Mặc định: "0" đại diện cho trang tính đầu tiên.</p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 2 (Ngữ pháp)</label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Sheet2 hoặc 1"
-                  value={grammarSheetName}
-                  onChange={(e) => setGrammarSheetName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">Sử dụng để tạo trò chơi sắp xếp câu.</p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 3 (Bảng trắng)</label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Sheet3 hoặc 2"
+                  placeholder="Ví dụ: whiteboard"
                   value={whiteboardSheetName}
                   onChange={(e) => setWhiteboardSheetName(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Sử dụng để đồng bộ hóa bài giảng trên bảng trắng.</p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 2 (Từ vựng - Vocabulary)</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: vocabulary"
+                  value={vocabSheetName}
+                  onChange={(e) => setVocabSheetName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 3 (Ngữ pháp - Sentence)</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: sentence"
+                  value={grammarSheetName}
+                  onChange={(e) => setGrammarSheetName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
+                />
               </div>
             </div>
           </div>
