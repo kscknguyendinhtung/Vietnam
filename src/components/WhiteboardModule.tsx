@@ -553,11 +553,12 @@ export default function WhiteboardModule({ tabs, onUpdateTabs }: WhiteboardModul
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ webhookUrl, data: tabs, type: 'whiteboard' })
         });
-        if (!response.ok) throw new Error("Sync failed");
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Sync failed");
         localStorage.setItem('vietlearn_webhook_url', webhookUrl);
         alert("Đồng bộ lên Sheet thành công!");
-    } catch (e) {
-        alert("Có lỗi xảy ra khi đồng bộ.");
+    } catch (e: any) {
+        alert("Có lỗi xảy ra khi đồng bộ: " + e.message);
     } finally {
         setSyncing(false);
     }
