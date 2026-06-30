@@ -417,10 +417,18 @@ app.post("/api/sync-to-sheet", async (req, res) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data, type }),
+      redirect: 'manual', // Prevent following redirects to avoid login page HTML
     });
 
     if (!response.ok) {
-      throw new Error(`Webhook failed: ${response.statusText}`);
+      // If it's a redirect, it might be an authentication issue
+      if (response.status >= 300 && response.status < 400) {
+        throw new Error("Webhook URL bị chuyển hướng. Hãy đảm bảo Google Apps Script được triển khai với quyền truy cập 'Anyone'.");
+      }
+      
+      const responseText = await response.text();
+      console.error("Webhook error response:", responseText);
+      throw new Error(`Webhook failed with status ${response.status}: ${response.statusText}`);
     }
 
     res.json({ success: true });
