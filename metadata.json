@@ -1,0 +1,6 @@
+{
+  "name": "Vietnamese Learning Studio",
+  "description": "Một ứng dụng toàn diện giúp học sinh học tiếng Việt và giáo viên chuẩn bị bài học: Từ vựng Flashcard, Ngữ pháp ghép từ, Bảng trắng thông dịch real-time, và AI Chat hỗ trợ biên dịch song ngữ.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
