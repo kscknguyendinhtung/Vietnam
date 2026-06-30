@@ -402,26 +402,37 @@ Break down the pronouns, verbs, particles, and sentence patterns used. Limit the
 
 // 4. API: Proxy sync to Google Sheet via Webhook
 app.post("/api/sync-to-sheet", async (req, res) => {
+  console.log("Received sync request type:", req.body.type);
   const { webhookUrl, data, type } = req.body;
   if (!webhookUrl || !data || !type) {
+    console.error("Missing fields in sync request:", { 
+      hasWebhook: !!webhookUrl, 
+      hasData: !!data, 
+      type 
+    });
     return res.status(400).json({ error: "webhookUrl, data, and type are required" });
   }
 
   try {
+    console.log("Attempting fetch to Google Apps Script:", webhookUrl);
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data, type }),
     });
 
+    const responseText = await response.text();
+    console.log("GAS Response status:", response.status);
+    console.log("GAS Response body:", responseText);
+
     if (!response.ok) {
-      throw new Error(`Webhook failed: ${response.statusText}`);
+      throw new Error(`Sync failed with status ${response.status}: ${responseText}`);
     }
 
     res.json({ success: true });
   } catch (err: any) {
-    console.error("Failed to sync to sheet:", err);
-    res.status(500).json({ error: err.message });
+    console.error("Error during sync to sheet:", err);
+    res.status(500).json({ error: err.message || "Sync failed" });
   }
 });
 
