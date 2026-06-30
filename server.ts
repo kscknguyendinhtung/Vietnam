@@ -296,7 +296,23 @@ Sentence: "${text.trim()}"`;
       throw new Error("Empty response from AI model.");
     }
 
-    const parsedData = JSON.parse(resultText.trim());
+    let parsedData;
+    try {
+      parsedData = JSON.parse(resultText.trim());
+    } catch (e) {
+      throw new Error("Failed to parse AI response as JSON.");
+    }
+
+    // Schema Validation
+    if (
+      !parsedData ||
+      typeof parsedData.fullTranslation !== 'string' ||
+      !Array.isArray(parsedData.words) ||
+      !parsedData.words.every((w: any) => typeof w.vi === 'string' && typeof w.en === 'string')
+    ) {
+      throw new Error("Invalid schema for whiteboard response.");
+    }
+
     res.json(parsedData);
   } catch (err: any) {
     console.warn("Failing back to 100% reliable local dictionary whiteboard translation:", err.message || err);
@@ -360,7 +376,22 @@ Always output valid JSON conforming to the schema.`;
       throw new Error("Empty response from Chat AI.");
     }
 
-    const parsedData = JSON.parse(resultText.trim());
+    let parsedData;
+    try {
+      parsedData = JSON.parse(resultText.trim());
+    } catch (e) {
+      throw new Error("Failed to parse AI response as JSON.");
+    }
+
+    // Schema Validation
+    if (
+      !parsedData ||
+      typeof parsedData.content !== 'string' ||
+      typeof parsedData.translation !== 'string'
+    ) {
+      throw new Error("Invalid schema for chat response.");
+    }
+
     res.json(parsedData);
   } catch (err: any) {
     console.warn("Failing back to 100% reliable local bilingual chatbot response:", err.message || err);
@@ -397,42 +428,6 @@ Break down the pronouns, verbs, particles, and sentence patterns used. Limit the
     console.warn("Failing back to 100% reliable local grammar explainer:", err.message || err);
     const localResult = localExplainGrammar(viSentence, enSentence);
     res.json(localResult);
-  }
-});
-
-// 4. API: Proxy sync to Google Sheet via Webhook
-app.post("/api/sync-to-sheet", async (req, res) => {
-  console.log("Received sync request type:", req.body.type);
-  const { webhookUrl, data, type } = req.body;
-  if (!webhookUrl || !data || !type) {
-    console.error("Missing fields in sync request:", { 
-      hasWebhook: !!webhookUrl, 
-      hasData: !!data, 
-      type 
-    });
-    return res.status(400).json({ error: "webhookUrl, data, and type are required" });
-  }
-
-  try {
-    console.log("Attempting fetch to Google Apps Script:", webhookUrl);
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data, type }),
-    });
-
-    const responseText = await response.text();
-    console.log("GAS Response status:", response.status);
-    console.log("GAS Response body:", responseText);
-
-    if (!response.ok) {
-      throw new Error(`Sync failed with status ${response.status}: ${responseText}`);
-    }
-
-    res.json({ success: true });
-  } catch (err: any) {
-    console.error("Error during sync to sheet:", err);
-    res.status(500).json({ error: err.message || "Sync failed" });
   }
 });
 

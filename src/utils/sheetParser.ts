@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { VocabItem, GrammarPuzzle, WhiteboardTab, WhiteboardLine } from '../types';
+import { VocabItem, GrammarPuzzle } from '../types';
 
 /**
  * Extracts spreadsheet ID from any standard Google Sheet URL
@@ -143,80 +143,6 @@ export async function fetchGrammarFromSheet(spreadsheetId: string, sheetNameOrId
   }
 
   return puzzles;
-}
-
-/**
- * Fetches and parses Whiteboard pages from Google Sheets CSV export (Sheet 3).
- * Expected columns:
- * 1. Tiêu đề Tab (Tab Title)
- * 2. Câu Tiếng Việt (Vietnamese Sentence)
- * 3. Dịch mượt (English Smooth Translation)
- * 4. Từ vựng bóc tách (Words segment: vi:en, vi:en)
- * 5. Ngữ pháp (Grammar Notes)
- */
-export async function fetchWhiteboardFromSheet(spreadsheetId: string, sheetNameOrId: string = '2'): Promise<WhiteboardTab[]> {
-  const isGid = /^\d+$/.test(sheetNameOrId);
-  const paramName = isGid ? 'gid' : 'sheet';
-  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&${paramName}=${encodeURIComponent(sheetNameOrId)}`;
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Không thể kết nối với Trang Bảng trắng. Mã lỗi: ${response.status}`);
-  }
-
-  const csvText = await response.text();
-  const rows = parseCSV(csvText);
-
-  if (rows.length < 2) {
-    return [];
-  }
-
-  const tabsMap: Record<string, WhiteboardLine[]> = {};
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (row.length < 2 || !row[0] || !row[1]) continue;
-
-    const tabTitle = row[0];
-    const viText = row[1];
-    const fullEnText = row[2] || '';
-    const wordsRaw = row[3] || '';
-    const grammar = row[4] || undefined;
-
-    const words: { id: string; vi: string; en: string }[] = [];
-    if (wordsRaw) {
-      // Split by comma or semicolon to support different locales
-      const wordPairs = wordsRaw.split(/[,;]/);
-      wordPairs.forEach((pair, idx) => {
-        const parts = pair.split(':');
-        if (parts.length >= 2) {
-          words.push({
-            id: `sheet-w-${i}-${idx}`,
-            vi: parts[0].trim(),
-            en: parts.slice(1).join(':').trim()
-          });
-        }
-      });
-    }
-
-    if (!tabsMap[tabTitle]) {
-      tabsMap[tabTitle] = [];
-    }
-
-    tabsMap[tabTitle].push({
-      id: `sheet-l-${i}`,
-      viText,
-      fullEnText,
-      words,
-      grammar
-    });
-  }
-
-  return Object.keys(tabsMap).map((title, idx) => ({
-    id: `sheet-tab-${idx}-${Date.now()}`,
-    title,
-    lines: tabsMap[title]
-  }));
 }
 
 // Sample published spreadsheet for demonstration and copying

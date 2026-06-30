@@ -5,21 +5,20 @@
 
 import React, { useState } from 'react';
 import { X, FileSpreadsheet, ExternalLink, HelpCircle, Check, Loader2, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
-import { extractSpreadsheetId, fetchVocabFromSheet, fetchGrammarFromSheet, fetchWhiteboardFromSheet, SAMPLE_SHEET_URL } from '../utils/sheetParser';
-import { VocabItem, GrammarPuzzle, WhiteboardTab } from '../types';
+import { extractSpreadsheetId, fetchVocabFromSheet, fetchGrammarFromSheet, SAMPLE_SHEET_URL } from '../utils/sheetParser';
+import { VocabItem, GrammarPuzzle } from '../types';
 
 interface SyncModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSyncComplete: (vocab: VocabItem[], puzzles: GrammarPuzzle[], whiteboard: WhiteboardTab[], sheetUrl: string) => void;
+  onSyncComplete: (vocab: VocabItem[], puzzles: GrammarPuzzle[], sheetUrl: string) => void;
   currentSheetUrl: string;
 }
 
 export default function SyncModal({ isOpen, onClose, onSyncComplete, currentSheetUrl }: SyncModalProps) {
-  const [sheetUrl, setSheetUrl] = useState(currentSheetUrl || 'https://docs.google.com/spreadsheets/d/1iUyG9kxnwH3L5wqoS9xurfyeZtq4Mjs9v8BGYUN3_Iw/edit?usp=sharing');
-  const [vocabSheetName, setVocabSheetName] = useState('vocabulary'); 
-  const [grammarSheetName, setGrammarSheetName] = useState('sentence');
-  const [whiteboardSheetName, setWhiteboardSheetName] = useState('whiteboard');
+  const [sheetUrl, setSheetUrl] = useState(currentSheetUrl || SAMPLE_SHEET_URL);
+  const [vocabSheetName, setVocabSheetName] = useState('0'); // GID 0 is usually Sheet 1
+  const [grammarSheetName, setGrammarSheetName] = useState('1'); // Let's guess second sheet is Sheet 2
   
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +27,9 @@ export default function SyncModal({ isOpen, onClose, onSyncComplete, currentShee
   if (!isOpen) return null;
 
   const handleUseSample = () => {
-    setSheetUrl('https://docs.google.com/spreadsheets/d/1iUyG9kxnwH3L5wqoS9xurfyeZtq4Mjs9v8BGYUN3_Iw/edit?usp=sharing');
-    setVocabSheetName('vocabulary');
-    setGrammarSheetName('sentence');
-    setWhiteboardSheetName('whiteboard');
+    setSheetUrl(SAMPLE_SHEET_URL);
+    setVocabSheetName('0');
+    setGrammarSheetName('1');
     setError(null);
   };
 
@@ -62,15 +60,7 @@ export default function SyncModal({ isOpen, onClose, onSyncComplete, currentShee
         // Sometimes spreadsheet only has 1 sheet, we allow it gracefully
       }
 
-      // 3. Fetch Whiteboard (Sheet 3)
-      let whiteboardItems: WhiteboardTab[] = [];
-      try {
-        whiteboardItems = await fetchWhiteboardFromSheet(id, whiteboardSheetName);
-      } catch (err) {
-        console.warn("Could not load whiteboard sheets, using empty list", err);
-      }
-
-      onSyncComplete(vocabItems, grammarItems, whiteboardItems, sheetUrl);
+      onSyncComplete(vocabItems, grammarItems, sheetUrl);
       setSuccess(true);
       setTimeout(() => {
         onClose();
@@ -117,22 +107,16 @@ export default function SyncModal({ isOpen, onClose, onSyncComplete, currentShee
             </h4>
             <ol className="list-decimal pl-4 space-y-1.5 text-[11px]">
               <li>
-                Tạo một file Google Sheets mới. Thiết lập <strong>3 Trang tính (Sheets)</strong> theo đúng thứ tự:
+                Tạo một file Google Sheets mới. Thiết lập <strong>2 Trang tính (Sheets)</strong>.
               </li>
               <li>
-                <strong>Trang tính 1 (whiteboard)</strong>: Có các cột tiêu đề ở dòng 1:
-                <div className="font-mono text-[10px] text-slate-500 bg-slate-100/80 p-1.5 rounded-lg mt-1 border border-slate-200/40">
-                  Tiêu đề Tab | Câu Tiếng Việt | Dịch mượt | Từ vựng bóc tách | Ngữ pháp
-                </div>
-              </li>
-              <li>
-                <strong>Trang tính 2 (vocabulary)</strong>: Có các cột tiêu đề ở dòng 1:
+                <strong>Trang tính 1 (Từ vựng)</strong>: Có các cột tiêu đề ở dòng 1:
                 <div className="font-mono text-[10px] text-slate-500 bg-slate-100/80 p-1.5 rounded-lg mt-1 border border-slate-200/40">
                   Tiếng Việt | Tiếng Anh | Chủ đề | Ví dụ | Dịch ví dụ
                 </div>
               </li>
               <li>
-                <strong>Trang tính 3 (sentence)</strong>: Có các cột tiêu đề ở dòng 1:
+                <strong>Trang tính 2 (Ngữ pháp)</strong>: Có các cột tiêu đề ở dòng 1:
                 <div className="font-mono text-[10px] text-slate-500 bg-slate-100/80 p-1.5 rounded-lg mt-1 border border-slate-200/40">
                   Câu Tiếng Việt | Nghĩa Tiếng Anh | Bài
                 </div>
@@ -176,7 +160,7 @@ export default function SyncModal({ isOpen, onClose, onSyncComplete, currentShee
                     <span className="font-semibold leading-relaxed">
                       💡 Phát hiện mã GID <code className="bg-orange-100 px-1.5 py-0.5 rounded font-mono text-xs font-black">{detectedGid}</code> từ liên kết của bạn. Gán GID này cho:
                     </span>
-                    <div className="flex gap-1.5 shrink-0 flex-wrap">
+                    <div className="flex gap-1.5 shrink-0">
                       <button
                         type="button"
                         onClick={() => setVocabSheetName(detectedGid)}
@@ -191,51 +175,35 @@ export default function SyncModal({ isOpen, onClose, onSyncComplete, currentShee
                       >
                         Trang Ngữ pháp
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setWhiteboardSheetName(detectedGid)}
-                        className="px-2.5 py-1 bg-white hover:bg-orange-100/50 border border-orange-200 rounded-lg font-extrabold text-[10px] cursor-pointer transition-all active:scale-95"
-                      >
-                        Trang Bảng trắng
-                      </button>
                     </div>
                   </div>
                 );
               })()}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 1 (Bảng trắng - Whiteboard)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 1 (Từ vựng)</label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: whiteboard"
-                  value={whiteboardSheetName}
-                  onChange={(e) => setWhiteboardSheetName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 2 (Từ vựng - Vocabulary)</label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: vocabulary"
+                  placeholder="Ví dụ: Sheet1 hoặc 0"
                   value={vocabSheetName}
                   onChange={(e) => setVocabSheetName(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Mặc định: "0" đại diện cho trang tính đầu tiên.</p>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 3 (Ngữ pháp - Sentence)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tên / GID Trang tính 2 (Ngữ pháp)</label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: sentence"
+                  placeholder="Ví dụ: Sheet2 hoặc 1"
                   value={grammarSheetName}
                   onChange={(e) => setGrammarSheetName(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Sử dụng để tạo trò chơi sắp xếp câu.</p>
               </div>
             </div>
           </div>
