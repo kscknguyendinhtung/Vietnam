@@ -1,13 +1,15 @@
 function doPost(e) {
   try {
     var json = JSON.parse(e.postData.contents);
-    var type = json.type; // 'vocabulary', 'sentence', 'whiteboard'
+    var sheetName = json.sheetName; // Use the specific sheet name
     var data = json.data;
+    var type = json.type; // 'vocabulary', 'sentence', 'whiteboard'
+    
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName(type);
+    var sheet = ss.getSheetByName(sheetName);
     
     if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Sheet not found: " + type}))
+      return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Sheet not found: " + sheetName}))
         .setMimeType(ContentService.MimeType.JSON);
     }
     
@@ -32,9 +34,9 @@ function doPost(e) {
           });
         });
     } else {
-        // Generic append for other types if they follow simple array structure
         if (Array.isArray(data)) {
             data.forEach(function(row) {
+                // Adjust for object structure if needed
                 sheet.appendRow(Object.values(row));
             });
         }
